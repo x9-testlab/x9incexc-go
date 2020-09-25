@@ -3,6 +3,13 @@
 
 
 ##
+## Custom
+##
+
+*/bin/*
+
+
+##
 ## From https://go.googlesource.com/go/+/refs/heads/master/.gitignore
 ##
 
