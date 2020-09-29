@@ -1,0 +1,89 @@
+Notes
+
+	Tooling
+		https://www.alexedwards.net/blog/an-overview-of-go-tooling
+
+Libraries
+
+	Argument parsers
+		alexflint/go-arg
+			https://github.com/alexflint/go-arg
+			go get github.com/alexflint/go-arg
+			import "github.com/alexflint/go-arg"
+			Notes:
+				- Looks good and simple
+				- Actively maintained
+		jessevdk/go-flags
+			https://github.com/jessevdk/go-flags
+			go get github.com/jessevdk/go-flags
+			import "github.com/jessevdk/go-flags"
+			Notes:
+				- Like go's flags, but more advanced.
+				- Looks perfect?
+				- May be abandoned (try it)?
+			Docs & examples:
+				https://godoc.org/github.com/jessevdk/go-flags
+		spf13/cobra
+			https://github.com/spf13/cobra
+			go get -u github.com/spf13/cobra
+			import "github.com/spf13/cobra"
+			Notes:
+				- Very powerful & used by many major applications
+				- Requires a highly specific application structure. Each command gets it's own .go file under app/cmd.
+				- Probably too complex.
+			Docs & examples:
+				https://github.com/openfaas/faas-cli/blob/master/commands/list.go
+		docopt/docopt.go
+			https://github.com/docopt/docopt.go
+			go get github.com/docopt/docopt-go
+			import "github.com/docopt/docopt-go"
+			Notes:
+				- Looks really simple!
+				- "docopt parses command-line arguments based on a help message. Don't write parser code: a good help message already has all the necessary information in it."
+				- Not maintained, me be too old for go modules?
+			Docs & examples:
+				https://github.com/docopt/docopt#help-message-format
+		teris-io/cli
+			https://github.com/teris-io/cli
+			Notes:
+				- Barely documented
+		akamensky/argparse
+			https://github.com/akamensky/argparse
+			Notes:
+				- "...bring ease of use and flexibility of [Python's] argparse to Go."
+				- "it is messy right now and could use a major revamp"
+		clagraff/argparse
+			https://github.com/clagraff/argparse
+			Notes:
+				- No Longer Supported
+				- "taking heavy influance from Python's argparse module."
+
+	Sqlite3
+		mattn/go-sqlite3
+			https://github.com/mattn/go-sqlite3
+			go get github.com/mattn/go-sqlite3
+			import (
+				"database/sql"
+				_ "github.com/mattn/go-sqlite3"
+			)
+			Notes:
+				- It's a cgo package (requiring gcc and CGO_ENABLED=1)
+				- Uses standard Go database/sql syntax.
+			Docs & examples:
+				http://go-database-sql.org/accessing.html
+				https://github.com/golang/go/wiki/SQLInterface
+				https://www.bogotobogo.com/GoLang/GoLang_SQLite.php
+
+GUIs
+	Gio
+		https://gioui.org/
+
+Static linking
+	Notes:
+		- Supposedly it is as simple as renaming C language *.o object files, to *.syso and including them somewhere in the build path.
+			- The files should be named with an architecture suffix, but NOT an OS suffix. (E.g. "sqlite3_v3310100_x86-64.syso".)
+	References
+		https://7thzero.com/blog/golang-w-sqlite3-docker-scratch-image
+		https://stackoverflow.com/a/27280031
+		https://github.com/golang/go/wiki/GcToolchainTricks
+		https://github.com/shadowmint/go-static-linking
