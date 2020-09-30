@@ -3,85 +3,46 @@
 ##	Purpose: Quick and dirty build script until 'redo' build system implemented.
 ##	History:
 ##		- 20200927 JC: Created.
+##	Notes:
+##		- fHook_Build() and fHook_PostBuild(), while they exist in this script, are intended to live by themselves and used thusly:
+##			x9go-build  ## This script
+##				function fMain(){
+##				}
+##				## And the rest of the code
+##			build.sh    ## Custom per-project script
+##				function fHook_Build(){
+##				}
+##				function fHook_PostBuild(){
+##				}
+##				. x9go-build $1
 
 
-function fBuild(){
+function fHook_Build(){
 
-	## Flags
-	##	CGO_ENABLED=0  .........................: For simple builds
-	##	CGO_ENABLED=1  .........................: If external stuff needs to be built, e.g. sqlite3
-	##	GOOS=linux GOARCH=amd64
-	##	go build
-	##	-a  ....................................: Force rebuild
-	##	-ldflags '-s -w'  ......................: Strip debugging symbols
-	##	-tags netgo  ...........................: Use built-in net package rather than system
-	##	-tags osusergo,netgo  ..................: Use built-in net and user package rather than more powerful system C versions
-	##	Static linking
-	##		-ldflags '-extldflags "-static"'
-	##		-ldflags="-extldflags=-static"
-	##	Sqlite3
-	##		Go flags
-	##			CGO_ENABLED=1 go build -ldflags="-extldflags=-static" -tags sqlite_omit_load_extension
-	##			--tags "libsqlite3 linux" ..........: Cross-compile and include sqlite3 library.
-	##		Help
-	##			https://golang.org/cmd/link/
-	##			https://github.com/mattn/go-sqlite3
-	##			https://groups.google.com/g/golang-nuts/c/GU6JGc3MzGs/m/f1OHpiQWH5IJ
-	##			https://golang.org/cmd/cgo/
-	##			https://www.ardanlabs.com/blog/2013/08/using-c-dynamic-libraries-in-go-programs.html
-	##			https://renenyffenegger.ch/notes/development/languages/C-C-plus-plus/GCC/create-libraries/index
-	##			https://akrennmair.github.io/golang-cgo-slides/#1
-	##			https://github.com/mattn/go-sqlite3/issues/858
-	##			https://www.sqlite.org/compile.html#default_wal_synchronous
-	##		Random examples, not sure what works or doesn't:
-	##			CGO_CFLAGS="-I/Development/sqlcipher/sqlcipher-static-osx/include"
-	##			CGO_LDFLAGS="/Development/sqlcipher/sqlcipher-static-osx/osx-libs/libsqlcipher-osx.a -framework Security -framework Foundation"
-	##			env CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -o app
-	##		Notes:
-	##			Instead of ":memory:", which is racey, use "file::memory:?cache=shared". https://github.com/mattn/go-sqlite3
-
-	## Statically compile Sqlite3
+	## Go environment variables
 #	declare -r GOOS=linux
 #	declare -r GOARCH=amd64
 	declare -r CGO_ENABLED=1
 	
-	## Sqlite3 compile-time flags; possibly have no effect in golang (unless using it to compile sqlite3 into program from source), but just in case:
-	local sqlite3CompileFlags=""
-	sqlite3CompileFlags="${sqlite3CompileFlags} -DSQLITE_OMIT_LOAD_EXTENSION"  #................: Solves a Go problem related to static linking.
-	sqlite3CompileFlags="${sqlite3CompileFlags} -DSQLITE_DEFAULT_FOREIGN_KEYS=1"  #.............: 1=Enable foreign key constraints by defualt. (0 is default only for backward compatibility.)
-	sqlite3CompileFlags="${sqlite3CompileFlags} -DSQLITE_THREADSAFE=0"  #.......................: 0=single-threaded, 1=fully multithreaded, 2=multithreaded but only one db connection at a time. Default=1, Sqlite3 recommended=0.
-	sqlite3CompileFlags="${sqlite3CompileFlags} -DSQLITE_DEFAULT_WAL_SYNCHRONOUS=1"  #..........: Sqlite3 recommended (faster than default and safe).
-	sqlite3CompileFlags="${sqlite3CompileFlags} -DSQLITE_DEFAULT_LOCKING_MODE=1"  #.............: 1=Exclusive lock. Usually no reason not to, for 1db per 1app.
-    sqlite3CompileFlags="${sqlite3CompileFlags} -DSQLITE_DQS=0"  #..............................: Sqlite3 recommended. Disables the double-quoted string literal misfeature, originally intended to be compatible with older MySql databases.
-    sqlite3CompileFlags="${sqlite3CompileFlags} -DSQLITE_DEFAULT_MEMSTATUS=0"  #................: Sqlite3 recommended. causes the sqlite3_status() to be disabled. Speeds everything up.
-    sqlite3CompileFlags="${sqlite3CompileFlags} -DSQLITE_LIKE_DOESNT_MATCH_BLOBS"  #............: Sqlite3 recommended. Speeds up LIKE and GLOB operators.
-    sqlite3CompileFlags="${sqlite3CompileFlags} -DSQLITE_MAX_EXPR_DEPTH=0"  #...................: Sqlite3 recommended. Simplifies the code resulting in faster execution, and helps the parse tree to use less memory.
-    sqlite3CompileFlags="${sqlite3CompileFlags} -DSQLITE_OMIT_DEPRECATED"  #....................: Sqlite3 recommended.
-    sqlite3CompileFlags="${sqlite3CompileFlags} -DSQLITE_OMIT_PROGRESS_CALLBACK"  #.............: Sqlite3 recommended.
-    sqlite3CompileFlags="${sqlite3CompileFlags} -DSQLITE_OMIT_SHARED_CACHE"  #..................: Sqlite3 recommended. Speeds up.
-    sqlite3CompileFlags="${sqlite3CompileFlags} -DSQLITE_USE_ALLOCA"  #.........................: Sqlite3 recommended. Make use of alloca() if exists.
-	sqlite3CompileFlags="$(fStrNormalize_byecho "${sqlite3CompileFlags}")"  #...................: Normalize string
-	
-	## CGo compiler flags
-	declare CGO_CFLAGS=""
-	CGO_CFLAGS="${CGO_CFLAGS} "
-	CGO_CFLAGS="$(fStrNormalize_byecho "${CGO_CFLAGS}")"  #.........: Normalize string
+	## Go environment variables: CGo compiler flags
+#	declare CGO_CFLAGS=""
+#	CGO_CFLAGS="${CGO_CFLAGS} "
+#	CGO_CFLAGS="$(fStrNormalize_byecho "${CGO_CFLAGS}")"  #.........: Normalize string
 
-	## CGo linker flags
-	declare CGO_LDFLAGS=""
-	CGO_LDFLAGS="${CGO_LDFLAGS} "
-	CGO_LDFLAGS="$(fStrNormalize_byecho "${CGO_LDFLAGS}")"  #.........: Normalize string
+	## Go environment variables: CGo linker flags
+#	declare CGO_LDFLAGS=""
+#	CGO_LDFLAGS="${CGO_LDFLAGS} "
+#	CGO_LDFLAGS="$(fStrNormalize_byecho "${CGO_LDFLAGS}")"  #.........: Normalize string
 
 	## -ldflags
 	local ldFlags=""
 	ldFlags="${ldFlags} -s -w"  #.........................................................: Disable debugging symbols.
-#	ldFlags="${ldFlags} -I'$(realpath "lib/sqlite3_v3310100/obj/x86-64/sqlite3.o")'"  #...: Explicitly link in existing .o file
 	ldFlags="${ldFlags} -X main.Version=${version}"  #....................................: Inject value
 	ldFlags="${ldFlags} -X main.GitCommitHash=${gitCommitHash}"  #........................: Inject value
 	ldFlags="${ldFlags} -X main.BuildDateTime=${buildDateTime}"  #........................: Inject value
 #	ldFlags="${ldFlags} -H=windowsgui"  #.................................................: No console in Windows
-	ldFlags="${ldFlags} -linkmode external"  #............................................: Options: internal, external, auto (external for static linking?)
-	ldFlags="${ldFlags} -extldflags '-static'"  #.........................................: Flags to external linker (?)
+#	ldFlags="${ldFlags} -linkmode external"  #............................................: Options: internal, external, auto (external for static linking?)
+#	ldFlags="${ldFlags} -extldflags=-static"  #...........................................: Flags to external linker (?)
 	ldFlags="$(fStrNormalize_byecho "${ldFlags}")"  #.....................................: Normalize string
 
 	## General Go tags
@@ -89,17 +50,16 @@ function fBuild(){
 #	goTags="${goTags} linux"  #.......................: Specify cross-compile environment
 #	goTags="${goTags} netgo"  #.......................: Use built-in network library, rather than C's (C versions have more features but require gcc and CGO_ENABLED=1).
 #	goTags="${goTags} osusergo"  #....................: Use built-in user library, rather than C's (C versions have more features but require gcc and CGO_ENABLED=1).
-	goTags="$(fStrNormalize_byecho "${goTags}")"  #...: Normalize string
+#	goTags="$(fStrNormalize_byecho "${goTags}")"  #...: Normalize string
 
-	## go-sqlite3 Tags
+	## go-sqlite3 Tags (NOTE: Don't include 'libsqlite3', as this will cause go-sqlite3 to use system-installed sqlite3 instead of custom-compiled)
 	local goTags_Sqlite3=""
-	goTags_Sqlite3="${goTags_Sqlite3} libsqlite3"  #..................................: Statically link in system's libsqlite3 (I think?)
 	goTags_Sqlite3="${goTags_Sqlite3} sqlite_omit_load_extension"  #..................: Solves a Go problem related to static linking.
 	goTags_Sqlite3="${goTags_Sqlite3} sqlite_foreign_keys=1"  #.......................: 1=Enable foreign key constraints by defualt. (0 is default only for backward compatibility.)
 #	goTags_Sqlite3="${goTags_Sqlite3} sqlite_fts5"  #.................................: Version 5 of the full-text search engine (fts5) is added to the build
 #	goTags_Sqlite3="${goTags_Sqlite3} sqlite_json  #..................................: 
 	goTags_Sqlite3="${goTags_Sqlite3} sqlite_icu"  #..................................: Unicode
-	goTags_Sqlite3="$(fStrNormalize_byecho "${goTags_Sqlite3}")"  #...: Normalize string
+	goTags_Sqlite3="$(fStrNormalize_byecho "${goTags_Sqlite3}")"  #...................: Normalize string
 
 	## Gather up gotags
 	goTags="${goTags} ${goTags_Sqlite3}"
@@ -113,20 +73,111 @@ function fBuild(){
 	export CGO_LDFLAGS
 
 	fEcho_Clean
-	fEcho_Clean_If "GOOS .................................: " "${GOOS}"
-	fEcho_Clean_If "GOARCH ...............................: " "${GOARCH}"
-	fEcho_Clean_If "CGO_ENABLED ..........................: " "${CGO_ENABLED}"
-	if [[ -n "${CGO_CFLAGS}"           ]]; then fEcho_Clean; fEcho_Clean "CGO_CFLAGS:";                          fEcho_Clean "${CGO_CFLAGS}";            fi
-	if [[ -n "${CGO_LDFLAGS}"          ]]; then fEcho_Clean; fEcho_Clean "CGO_LDFLAGS:";                         fEcho_Clean "${CGO_LDFLAGS}";           fi
-	if [[ -n "${ldFlags}"              ]]; then fEcho_Clean; fEcho_Clean "ldFlags:";                             fEcho_Clean "--ldflags \"${ldFlags}\""; fi
-	if [[ -n "${goTags} "              ]]; then fEcho_Clean; fEcho_Clean "Tags:";                                fEcho_Clean "--tags \"${goTags}\"";     fi
-	if [[ -n "${sqlite3CompileFlags} " ]]; then fEcho_Clean; fEcho_Clean "Ideal sqlite3 C compile flags (FYI):"; fEcho_Clean "${sqlite3CompileFlags}";   fi
-	fEcho_Clean
+	fEcho_Clean_If "GOOS ..........: "  "${GOOS}"
+	fEcho_Clean_If "GOARCH ........: "  "${GOARCH}"
+	fEcho_Clean_If "CGO_ENABLED ...: "  "${CGO_ENABLED}"
+	fEcho_Clean_If "\nCGO_CFLAGS:\n"                           "${CGO_CFLAGS}"
+	fEcho_Clean_If "\nCGO_LDFLAGS:\n"                          "${CGO_LDFLAGS}"
+	fEcho_Clean_If "\nldFlags:\n"                              "${ldFlags}"
+	fEcho_Clean_If "\ngoTags:\n"                               "${goTags}"
 
-	go build --tags "${goTags}" --ldflags "${ldFlags}" .
-#	go build -a -ldflags "-linkmode external -extldflags '-static' -s -w -X main.Version=${version} -X main.GitCommitHash=${gitCommitHash} -X main.BuildDateTime=${buildDateTime}" .
-#	go build -a -ldflags "-s -w -X main.Version=${version} -X main.GitCommitHash=${gitCommitHash} -X main.BuildDateTime=${buildDateTime}"  -o "bin/${exeName}"
+	fEcho_Clean
+	go build --tags "${goTags}" --ldflags "${ldFlags}" -o "bin/${exeName}" .
 	fEcho_ResetBlankCounter
+
+}
+
+
+function fHook_PostBuild(){
+
+	local -r sourceBinDir="bin"
+	local -r targetDepsCopiesDir="dependencies"
+
+	## Archive program dependencies
+	if [[ -z "$(which x9copy-program-dependencies 2>/dev/null || true)" ]]; then
+		fEcho_Clean "    fHook_PostBuild(): FYI: Program not found in path: 'x9copy-program-dependencies', skipping that post-build functionality."
+	else
+
+		## Validate
+		[[ -z "$(which find   2>/dev/null || true)" ]] && fThrowError "fHook_PostBuild(): Not found in path: 'find'."
+		[[ -z "$(which 7z     2>/dev/null || true)" ]] && fThrowError "fHook_PostBuild(): Not found in path: '7z'."
+		[[ -z "$(which mktemp 2>/dev/null || true)" ]] && fThrowError "fHook_PostBuild(): Not found in path: 'mktemp'."
+
+		if [[ ! -d "${sourceBinDir}" ]]; then
+			fThrowError "fHook_PostBuild(): Source bin dir not found: '${sourceBinDir}'."
+		else
+			if [[ -z "$(find "${sourceBinDir}" -type f 2>/dev/null || true)" ]]; then
+				fThrowError "fHook_PostBuild(): Nothing found in '${sourceBinDir}'."
+			else
+
+				## Get temp dir
+				local -r tmpDir="$(mktemp -d)"
+
+				## Make the dependencies directory
+				[[ ! -d "${targetDepsCopiesDir}"             ]] &&  mkdir -p  "${targetDepsCopiesDir}"
+
+				## Manage older archive version[s]
+				fEcho_Clean "    Managing old system dependency archives ..."
+				[[ -f "/tmp/system_old.7z"                   ]] && \rm  "/tmp/system_old.7z"
+				[[ -f "${targetDepsCopiesDir}/system.7z"     ]] &&  mv  "${targetDepsCopiesDir}/system.7z"  "/tmp/system_old.7z"
+
+				## For each file in bin, find and copy dependencies, preserving source structure.
+				declare -r -i x9copy_program_dependencies_QUIET=1; export x9copy_program_dependencies_QUIET
+				fEcho_Clean "    Copying system dependencies to temp dir '${tmpDir}' ..."
+				for eachFile in $(find "${sourceBinDir}" -type f 2>/dev/null || true); do
+					x9copy-program-dependencies "${eachFile}" "${tmpDir}"
+				done
+
+				if [[ -z "$(find "${targetDepsCopiesDir}" -type f 2>/dev/null || true)" ]]; then
+					fEcho_Clean "    fHook_PostBuild(): No dependencies were copied to '${targetDepsCopiesDir}'."
+				else
+
+					## Arcvhive the dependencies
+					fEcho_Clean "    Creating system dependencies archive at '${targetDepsCopiesDir}/system.7z' ..."
+					7z a -t7z -mmt=on -mtc=on -mtm=on -mhc=on -mx=3 -ms=on -mqs=on "${targetDepsCopiesDir}/system.7z" "${tmpDir}/*" 1>/dev/null
+						## -v2349858816b  ## Creates a '*.7z.001' file.
+
+					## Valdiate
+					if [[ ! -f "${targetDepsCopiesDir}/system.7z" ]]; then
+						fThrowError "fHook_PostBuild(): Archive not found: '${targetDepsCopiesDir}/system.7z'."
+					fi
+
+					## Copy the program and dependencies to x9chroot
+					local -r targetChroot="/var/x9chroot"
+					local -r targetTest="${targetChroot}${HOME}/test"
+					if [[ -n "$(which x9chroot 2>/dev/null || true)" ]]; then
+						if [[ -n "$(ls -A "${targetChroot}${HOME}" 2>/dev/null || true)" ]]; then
+
+							## Manage test dir versions
+							fEcho_Clean "    Managing old x9chroot test folders ..."
+							if [[ -d "${targetTest}_old" ]]; then \rm -rf "${targetTest}_old"                      ; fi
+							if [[ -d "${targetTest}"     ]]; then  mv     "${targetTest}"      "${targetTest}_old" ; fi
+							mkdir -p "${targetTest}"
+
+							## Copy contents of bin to chroot target
+							fEcho_Clean "    Copying '${sourceBinDir}/*' to '${targetTest}/' ..."
+							cp --parents -a --update "${sourceBinDir}"/ "${targetTest}"/
+
+							## Copy dependencies
+							fEcho_Clean "    Copying system dependencies to '${targetTest}/' ..."
+							pushd "${tmpDir}" 1>/dev/null
+								sudo cp --parents -a --update ./  "${targetChroot}"/
+							popd 1>/dev/null
+
+						fi
+					fi
+
+				fi
+			fi
+		fi
+	fi
+
+	fEcho_ResetBlankCounter
+	fEcho_Clean
+	fEcho_Clean "Ready to test in isolation via these commands:"
+	fEcho_Clean
+	fEcho_Clean "x9chroot enter"
+	fEcho_Clean "~/test/${sourceBinDir}/${exeName}"
 
 }
 
@@ -151,13 +202,13 @@ function fMain(){
 	local -r buildDateTime="$(date -u "+%Y%m%dT%H%M%SZ")"
 
 	## Init
-	[[ ! -d  bin                               ]] && mkdir  bin
-	[[   -f "/tmp/${exeName}_old"              ]] && rm  "/tmp/${exeName}_old"
-	[[   -f "bin/${exeName}_old"               ]] && mv  "bin/${exeName}_old"                 "/tmp/"
-	[[   -f "bin/${exeName}"                   ]] && mv  "bin/${exeName}"                     "bin/${exeName}_old"
-	[[   -f "/tmp/${exeName}_uncompressed_old" ]] && rm  "/tmp/${exeName}_uncompressed_old"
-	[[   -f "bin/${exeName}_uncompressed_old"  ]] && mv  "bin/${exeName}_uncompressed_old"    "/tmp/"
-	[[   -f "bin/${exeName}_uncompressed"      ]] && mv  "bin/${exeName}_uncompressed"        "bin/${exeName}_uncompressed_old"
+	[[ ! -d  bin                               ]] &&  mkdir  bin
+	[[   -f "/tmp/${exeName}_old"              ]] && \rm  "/tmp/${exeName}_old"
+	[[   -f "bin/${exeName}"                   ]] &&  mv  "bin/${exeName}"                     "/tmp/${exeName}_old"
+#	[[   -f "bin/${exeName}"                   ]] &&  mv  "bin/${exeName}"                     "bin/${exeName}_old"
+	[[   -f "/tmp/${exeName}_uncompressed_old" ]] && \rm  "/tmp/${exeName}_uncompressed_old"
+	[[   -f "bin/${exeName}_uncompressed"      ]] &&  mv  "bin/${exeName}_uncompressed"        "/tmp/${exeName}_uncompressed_old"
+#	[[   -f "bin/${exeName}_uncompressed"      ]] &&  mv  "bin/${exeName}_uncompressed"        "bin/${exeName}_uncompressed_old"
 
 	## Clean up dependencies
 	fEcho
@@ -187,7 +238,7 @@ function fMain(){
 	## Build
 	fEcho "Building ..."
 	fEcho
-	fBuild
+	fHook_Build
 	fEcho_ResetBlankCounter
 
 	## Validate
@@ -196,12 +247,18 @@ function fMain(){
 	## Compress
 	fEcho "Shrinking ..."
 	[[   -f "bin/${exeName}"      ]] && mv  "bin/${exeName}"  "bin/${exeName}_uncompressed"
-#	upx  -qq --ultra-brute  -o"bin/${exeName}"  "bin/${exeName}_uncompressed"
+#	upx  -qq --ultra-brute  -o"bin/${exeName}"  "bin/${exeName}_uncompressed" | ts "    "
 	upx  -qq                -o"bin/${exeName}"  "bin/${exeName}_uncompressed" | ts "    "
 	fEcho_ResetBlankCounter
 	fEcho
 
+	## Additional hook
+	fEcho ""
+	fEcho "Running post-build hook ..."
+	fHook_PostBuild
+
 	## Show
+	fEcho ""
 	LC_COLLATE="C" ls -lA --color=always --group-directories-first --human-readable --indicator-style=slash --time-style=+"%Y-%m-%d %H:%M:%S" "bin"
 	fEcho_ResetBlankCounter
 

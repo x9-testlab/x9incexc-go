@@ -3,6 +3,16 @@ Notes
 	Tooling
 		https://www.alexedwards.net/blog/an-overview-of-go-tooling
 
+	go build:
+		Flags:
+			CGO_ENABLED=0  ...............: For simple builds
+			CGO_ENABLED=1  ...............: If external stuff needs to be built, e.g. sqlite3
+		Options:
+			-a  ..........................: Force rebuild
+			--ldflags '-s -w'  ...........: Strip debugging symbols
+			--tags osusergo,netgo  .......: Use built-in net and user package rather than more powerful system C versions
+			Static linking: --ldflags="-extldflags=-static"  *or*  --ldflags '-extldflags "-static"'
+
 Libraries
 
 	Argument parsers
@@ -69,10 +79,42 @@ Libraries
 			Notes:
 				- It's a cgo package (requiring gcc and CGO_ENABLED=1)
 				- Uses standard Go database/sql syntax.
-			Docs & examples:
+				- Instead of ":memory:", which is racey, use "file::memory:?cache=shared". https://github.com/mattn/go-sqlite3
+				Sqlite3:
+					> Go flags
+						CGO_ENABLED=1 go build -ldflags="-extldflags=-static" --tags sqlite_omit_load_extension
+						--tags "libsqlite3" ..........: DON'T USE; Include SYSTEM-installed sqlite3 library (rather than custom one from go-sqlite3)
+				Compiler flags if compiling sqlite3 from scratch (not really relevant to go-sqlite3):
+					## Sqlite3 compile-time flags; not useful here, just for FYI
+					local sqlite3CompileFlags=""
+					sqlite3CompileFlags="${sqlite3CompileFlags} -DSQLITE_OMIT_LOAD_EXTENSION"  #................: Solves a Go problem related to static linking.
+					sqlite3CompileFlags="${sqlite3CompileFlags} -DSQLITE_DEFAULT_FOREIGN_KEYS=1"  #.............: 1=Enable foreign key constraints by defualt. (0 is default only for backward compatibility.)
+					sqlite3CompileFlags="${sqlite3CompileFlags} -DSQLITE_THREADSAFE=0"  #.......................: 0=single-threaded, 1=fully multithreaded, 2=multithreaded but only one db connection at a time. Default=1, Sqlite3 recommended=0.
+					sqlite3CompileFlags="${sqlite3CompileFlags} -DSQLITE_DEFAULT_WAL_SYNCHRONOUS=1"  #..........: Sqlite3 recommended (faster than default and safe).
+					sqlite3CompileFlags="${sqlite3CompileFlags} -DSQLITE_DEFAULT_LOCKING_MODE=1"  #.............: 1=Exclusive lock. Usually no reason not to, for 1db per 1app.
+					sqlite3CompileFlags="${sqlite3CompileFlags} -DSQLITE_DQS=0"  #..............................: Sqlite3 recommended. Disables the double-quoted string literal misfeature, originally intended to be compatible with older MySql databases.
+					sqlite3CompileFlags="${sqlite3CompileFlags} -DSQLITE_DEFAULT_MEMSTATUS=0"  #................: Sqlite3 recommended. causes the sqlite3_status() to be disabled. Speeds everything up.
+					sqlite3CompileFlags="${sqlite3CompileFlags} -DSQLITE_LIKE_DOESNT_MATCH_BLOBS"  #............: Sqlite3 recommended. Speeds up LIKE and GLOB operators.
+					sqlite3CompileFlags="${sqlite3CompileFlags} -DSQLITE_MAX_EXPR_DEPTH=0"  #...................: Sqlite3 recommended. Simplifies the code resulting in faster execution, and helps the parse tree to use less memory.
+					sqlite3CompileFlags="${sqlite3CompileFlags} -DSQLITE_OMIT_DEPRECATED"  #....................: Sqlite3 recommended.
+					sqlite3CompileFlags="${sqlite3CompileFlags} -DSQLITE_OMIT_PROGRESS_CALLBACK"  #.............: Sqlite3 recommended.
+					sqlite3CompileFlags="${sqlite3CompileFlags} -DSQLITE_OMIT_SHARED_CACHE"  #..................: Sqlite3 recommended. Speeds up.
+					sqlite3CompileFlags="${sqlite3CompileFlags} -DSQLITE_USE_ALLOCA"  #.........................: Sqlite3 recommended. Make use of alloca() if exists.
+					sqlite3CompileFlags="$(fStrNormalize_byecho "${sqlite3CompileFlags}")"  #...................: Normalize string
+			Docs, examples, troubleshooting:
 				http://go-database-sql.org/accessing.html
 				https://github.com/golang/go/wiki/SQLInterface
 				https://www.bogotobogo.com/GoLang/GoLang_SQLite.php
+				https://github.com/mattn/go-sqlite3/issues/858#issuecomment-701531930
+				https://golang.org/cmd/link/
+				https://github.com/mattn/go-sqlite3
+				https://groups.google.com/g/golang-nuts/c/GU6JGc3MzGs/m/f1OHpiQWH5IJ
+				https://golang.org/cmd/cgo/
+				https://www.ardanlabs.com/blog/2013/08/using-c-dynamic-libraries-in-go-programs.html
+				https://renenyffenegger.ch/notes/development/languages/C-C-plus-plus/GCC/create-libraries/index
+				https://akrennmair.github.io/golang-cgo-slides/#1
+				https://github.com/mattn/go-sqlite3/issues/858
+				https://www.sqlite.org/compile.html#default_wal_synchronous
 
 GUIs
 	Gio
